@@ -9,21 +9,30 @@
 #'
 #'
 tsset <-  function(df, start, frequency) {
-  # Check that df is a data frame
-  df <- as.data.frame(df)
+  # Keep only the numeric columns in the data frame
+  numeric_cols <- sapply(df, is.numeric)
+  df_numeric <- df[, numeric_cols, drop = FALSE]
   
-  # Convert the entire data frame into a multivariate time series
-  # Note: This requires that all columns in df are numeric.
-  ts_data <- ts(df, start = start, frequency = frequency)
+  # Convert the numeric data frame to a multivariate time series.
+  ts_data <- ts(df_numeric, start = start, frequency = frequency)
   
-  # Extract the time index from the time series object.
-  # The 'time' function returns a vector of time points that correspond to the rows.
+  # Extract the fractional time index from the time series object.
   time_index <- time(ts_data)
   
-  # Create a new data frame that includes the time variable along with the original data.
-  # We convert ts_data back to a data frame using as.data.frame().
-  result_df <- data.frame(time = time_index, as.data.frame(ts_data))
+  # Convert the time index to a human-friendly date format based on frequency.
+  if (frequency == 12) {
+    # For monthly data: use zoo::as.yearmon then convert to Date (defaults to the first day of the month)
+    regular_time <- as.Date(zoo::as.yearmon(time_index))
+  } else if (frequency == 4) {
+    # For quarterly data: use zoo::as.yearqtr then convert to Date (defaults to the first day of the quarter)
+    regular_time <- as.Date(zoo::as.yearqtr(time_index))
+  } else {
+    # For other frequencies, issue a warning and return the numeric time index.
+    warning("Frequency not specifically handled; returning numeric time index.")
+    regular_time <- time_index
+  }
   
+  # Create and return a new data frame that includes the converted time variable along with the numeric data.
+  result_df <- data.frame(time = regular_time, as.data.frame(ts_data))
   return(result_df)
 }
-
