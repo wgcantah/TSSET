@@ -8,7 +8,7 @@
 #' @export
 #'
 #'
-tsset <-  function(df, start, frequency) {
+tsset <- function(df, start, frequency) {
   # Keep only numeric columns from the input data frame.
   numeric_cols <- sapply(df, is.numeric)
   df_numeric <- df[, numeric_cols, drop = FALSE]
@@ -38,3 +38,8 @@ tsset <-  function(df, start, frequency) {
     warning("Frequency not specifically handled; returning numeric time index.")
     date_seq <- time(ts_data)
   }
+  
+  # Create and return a new data frame that includes the date variable and the time series data.
+  result_df <- data.frame(time = date_seq, as.data.frame(ts_data))
+  return(result_df)
+}
