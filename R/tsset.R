@@ -9,30 +9,32 @@
 #'
 #'
 tsset <-  function(df, start, frequency) {
-  # Keep only the numeric columns in the data frame
+  # Keep only numeric columns from the input data frame.
   numeric_cols <- sapply(df, is.numeric)
   df_numeric <- df[, numeric_cols, drop = FALSE]
   
   # Convert the numeric data frame to a multivariate time series.
   ts_data <- ts(df_numeric, start = start, frequency = frequency)
   
-  # Extract the fractional time index from the time series object.
-  time_index <- time(ts_data)
+  # Determine the number of observations.
+  n <- nrow(df_numeric)
   
-  # Convert the time index to a human-friendly date format based on frequency.
+  # Generate a proper Date sequence based on the frequency.
   if (frequency == 12) {
-    # For monthly data: use zoo::as.yearmon then convert to Date (defaults to the first day of the month)
-    regular_time <- as.Date(zoo::as.yearmon(time_index))
+    # For monthly data: assume start[2] is the month (1-12).
+    start_date <- as.Date(sprintf("%d-%02d-01", start[1], start[2]))
+    date_seq <- seq.Date(from = start_date, by = "month", length.out = n)
   } else if (frequency == 4) {
-    # For quarterly data: use zoo::as.yearqtr then convert to Date (defaults to the first day of the quarter)
-    regular_time <- as.Date(zoo::as.yearqtr(time_index))
+    # For quarterly data: assume start[2] is the quarter (1-4).
+    # The first month of the quarter is: (quarter - 1) * 3 + 1.
+    start_month <- (start[2] - 1) * 3 + 1
+    start_date <- as.Date(sprintf("%d-%02d-01", start[1], start_month))
+    date_seq <- seq.Date(from = start_date, by = "quarter", length.out = n)
+  } else if (frequency == 1) {
+    # For annual data: use January 1st of the starting year.
+    start_date <- as.Date(sprintf("%d-01-01", start[1]))
+    date_seq <- seq.Date(from = start_date, by = "year", length.out = n)
   } else {
-    # For other frequencies, issue a warning and return the numeric time index.
     warning("Frequency not specifically handled; returning numeric time index.")
-    regular_time <- time_index
+    date_seq <- time(ts_data)
   }
-  
-  # Create and return a new data frame that includes the converted time variable along with the numeric data.
-  result_df <- data.frame(time = regular_time, as.data.frame(ts_data))
-  return(result_df)
-}
