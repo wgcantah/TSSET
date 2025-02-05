@@ -8,28 +8,22 @@
 #' @export
 #'
 #'
-tsset <- function(df, start = c(1, 1), frequency = "daily") {
-  # Define frequency values based on the type of series
-  freq_values <- list(
-    daily = 365,       # daily data
-    weekly = 52,       # weekly data
-    monthly = 12,      # monthly data
-    quarterly = 4,     # quarterly data
-    annual = 1         # annual data
-  )
-
-  # Get the frequency number for the given frequency type
-  freq <- freq_values[[frequency]]
-
-  if (is.null(freq)) {
-    stop("Invalid frequency type. Use 'daily', 'weekly', 'monthly', 'quarterly', or 'annual'.")
-  }
-
-  # Convert numeric columns to time series based on the frequency and start
-  df_ts <- df
-  df_ts[sapply(df_ts, is.numeric)] <- lapply(df_ts[sapply(df_ts, is.numeric)], function(col) {
-    ts(col, start = start, frequency = freq)
-  })
-
-  return(df_ts)
+tsset <-  function(df, start, frequency) {
+  # Check that df is a data frame
+  df <- as.data.frame(df)
+  
+  # Convert the entire data frame into a multivariate time series
+  # Note: This requires that all columns in df are numeric.
+  ts_data <- ts(df, start = start, frequency = frequency)
+  
+  # Extract the time index from the time series object.
+  # The 'time' function returns a vector of time points that correspond to the rows.
+  time_index <- time(ts_data)
+  
+  # Create a new data frame that includes the time variable along with the original data.
+  # We convert ts_data back to a data frame using as.data.frame().
+  result_df <- data.frame(time = time_index, as.data.frame(ts_data))
+  
+  return(result_df)
 }
+
