@@ -8,38 +8,58 @@
 #' @export
 #'
 #'
-tsset <- function(df, start, frequency) {
-  # Keep only numeric columns from the input data frame.
-  numeric_cols <- sapply(df, is.numeric)
-  df_numeric <- df[, numeric_cols, drop = FALSE]
-  
-  # Convert the numeric data frame to a multivariate time series.
-  ts_data <- ts(df_numeric, start = start, frequency = frequency)
-  
-  # Determine the number of observations.
-  n <- nrow(df_numeric)
-  
-  # Generate a proper Date sequence based on the frequency.
-  if (frequency == 12) {
-    # For monthly data: assume start[2] is the month (1-12).
-    start_date <- as.Date(sprintf("%d-%02d-01", start[1], start[2]))
-    date_seq <- seq.Date(from = start_date, by = "month", length.out = n)
-  } else if (frequency == 4) {
-    # For quarterly data: assume start[2] is the quarter (1-4).
-    # The first month of the quarter is: (quarter - 1) * 3 + 1.
-    start_month <- (start[2] - 1) * 3 + 1
-    start_date <- as.Date(sprintf("%d-%02d-01", start[1], start_month))
-    date_seq <- seq.Date(from = start_date, by = "quarter", length.out = n)
-  } else if (frequency == 1) {
-    # For annual data: use January 1st of the starting year.
-    start_date <- as.Date(sprintf("%d-01-01", start[1]))
-    date_seq <- seq.Date(from = start_date, by = "year", length.out = n)
-  } else {
-    warning("Frequency not specifically handled; returning numeric time index.")
-    date_seq <- time(ts_data)
+tsset <-function(df, frequency = 1, start = c(1, 1)) {
+  # Ensure the input is a dataframe
+  if (!is.data.frame(df)) {
+    stop("Input must be a dataframe.")
   }
   
-  # Create and return a new data frame that includes the date variable and the time series data.
-  result_df <- data.frame(time = date_seq, as.data.frame(ts_data))
-  return(result_df)
+  # Extract numerical columns
+  numerical_cols <- sapply(df, is.numeric)
+  
+  # Check if there are any numerical columns
+  if (sum(numerical_cols) == 0) {
+    stop("No numerical variables found in the dataframe.")
+  }
+  
+  # Convert numerical columns to time series
+  ts_list <- lapply(df[numerical_cols], function(x) ts(x, frequency = frequency, start = start))
+  
+  # Combine the time series into a dataframe
+  ts_df <- as.data.frame(ts_list)
+  
+  # Create a time variable in decimal format
+  time_var <- time(ts(1:nrow(df), frequency = frequency, start = start))
+  
+  # Convert decimal time to proper date format
+  if (frequency == 4) {
+    # Quarterly data
+    dates <- sapply(time_var, function(t) {
+      year <- floor(t)
+      quarter <- (t - year) * 4 + 1
+      month <- (quarter - 1) * 3 + 1
+      as.Date(paste(year, month, "01", sep = "-"))
+    })
+  } else if (frequency == 12) {
+    # Monthly data
+    dates <- sapply(time_var, function(t) {
+      year <- floor(t)
+      month <- round((t - year) * 12) + 1
+      as.Date(paste(year, month, "01", sep = "-"))
+    })
+  } else if (frequency == 1) {
+    # Yearly data
+    dates <- sapply(time_var, function(t) {
+      year <- floor(t)
+      as.Date(paste(year, "01", "01", sep = "-"))
+    })
+  } else {
+    stop("Unsupported frequency. Please use 1 (yearly), 4 (quarterly), or 12 (monthly).")
+  }
+  
+  # Add the date variable to the dataframe
+  ts_df$time <- as.Date(dates, origin = "1970-01-01")
+  
+  return(ts_df)
 }
+
